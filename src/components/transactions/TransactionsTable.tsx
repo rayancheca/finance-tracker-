@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -61,10 +62,20 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
   const [catMenuOpen, setCatMenuOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const allSelected = rows.length > 0 && selected.size === rows.length;
+  // Selection survives router.refresh(), but the row set can change underneath
+  // it (e.g. an inline edit drops a row from a filtered view). Derive the
+  // actionable selection from the rows currently on screen so counts, header
+  // state, and bulk actions never reference rows the user can't see.
+  const rowIds = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
+  const validSelected = useMemo(
+    () => new Set([...selected].filter((id) => rowIds.has(id))),
+    [selected, rowIds],
+  );
+
+  const allSelected = rows.length > 0 && validSelected.size === rows.length;
   const headerState: boolean | 'indeterminate' = allSelected
     ? true
-    : selected.size > 0
+    : validSelected.size > 0
       ? 'indeterminate'
       : false;
 
@@ -95,7 +106,7 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
   }
 
   function handleDelete() {
-    const ids = Array.from(selected);
+    const ids = Array.from(validSelected);
     if (ids.length === 0) return;
     if (!window.confirm(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`)) return;
     runBulk(() => bulkDeleteTransactions(ids), `Deleted ${ids.length}`);
@@ -103,13 +114,13 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
 
   function handleSetCategory(categoryId: string) {
     setCatMenuOpen(false);
-    const ids = Array.from(selected);
+    const ids = Array.from(validSelected);
     if (ids.length === 0) return;
     runBulk(() => bulkUpdateCategory(ids, categoryId), 'Category updated');
   }
 
   function handleMarkCleared() {
-    const ids = Array.from(selected);
+    const ids = Array.from(validSelected);
     if (ids.length === 0) return;
     runBulk(() => bulkSetCleared(ids, true), 'Marked cleared');
   }
@@ -157,7 +168,12 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {r.externalTransactionId && <Zap className="h-3 w-3 text-accent" />}
+                    {r.externalTransactionId && (
+                      <span title="Auto-synced">
+                        <Zap aria-hidden className="h-3 w-3 text-accent" />
+                        <span className="sr-only">Auto-synced</span>
+                      </span>
+                    )}
                     <div>
                       <div className="text-sm">{r.description}</div>
                       {r.merchant && (
@@ -167,13 +183,18 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
                   </div>
                 </TableCell>
                 <TableCell>
-                  <CategoryCombobox
-                    transactionId={r.id}
-                    currentCategoryId={r.categoryId}
-                    currentLabel={r.categoryName ?? r.type}
-                    categories={categories}
-                    onChanged={() => router.refresh()}
-                  />
+                  {r.type === 'transfer' ? (
+                    <Badge variant="outline">transfer</Badge>
+                  ) : (
+                    <CategoryCombobox
+                      transactionId={r.id}
+                      transactionType={r.type}
+                      currentCategoryId={r.categoryId}
+                      currentLabel={r.categoryName ?? r.type}
+                      categories={categories}
+                      onChanged={() => router.refresh()}
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="text-sm">{r.accountName}</TableCell>
                 <TableCell
@@ -199,10 +220,10 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
         </TableBody>
       </Table>
 
-      {selected.size > 0 && (
+      {validSelected.size > 0 && (
         <div className="pointer-events-none sticky bottom-4 z-10 flex justify-center px-4">
           <div className="pointer-events-auto flex items-center gap-1 rounded-full border bg-card/90 p-1.5 pl-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/75">
-            <span className="text-sm font-medium">{selected.size} selected</span>
+            <span className="text-sm font-medium">{validSelected.size} selected</span>
             <Separator orientation="vertical" className="mx-1 h-5" />
             <Button variant="ghost" size="sm" onClick={handleMarkCleared} disabled={pending}>
               <CheckCircle2 className="mr-1 h-4 w-4" /> Mark cleared

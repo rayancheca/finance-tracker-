@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AccountBalanceChart } from '@/components/accounts/AccountBalanceChart';
-import { getAccountBalances, getAccountBalanceSeries, listTransactions } from '@/db/queries';
+import { getAccountActivity, getAccountBalances, getAccountBalanceSeries } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 import { formatUSD } from '@/lib/currency';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
 
   const [balances, txns, series] = await Promise.all([
     getAccountBalances(userId),
-    listTransactions(userId, { accountId: id, limit: 25 }),
+    getAccountActivity(userId, id, 25),
     getAccountBalanceSeries(userId, id),
   ]);
 
@@ -115,15 +115,21 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{r.categoryName ?? r.type}</Badge>
+                      <Badge variant="outline">
+                        {r.type === 'transfer'
+                          ? r.inbound
+                            ? 'Transfer in'
+                            : 'Transfer out'
+                          : (r.categoryName ?? r.type)}
+                      </Badge>
                     </TableCell>
                     <TableCell
                       className={cn(
                         'tabular text-right text-sm font-medium',
-                        r.type === 'income' ? 'text-income' : 'text-expense',
+                        r.inbound ? 'text-income' : 'text-expense',
                       )}
                     >
-                      {r.type === 'income' ? '+' : '−'}
+                      {r.inbound ? '+' : '−'}
                       {formatUSD(parseFloat(r.amount))}
                     </TableCell>
                     <TableCell className="text-right">

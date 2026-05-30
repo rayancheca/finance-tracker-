@@ -43,7 +43,20 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   const categoryOptions = categories
     .filter((c) => !c.isArchived)
-    .map((c) => ({ id: c.id, name: c.name, group: c.group }));
+    .map((c) => ({ id: c.id, name: c.name, group: c.group, kind: c.kind }));
+
+  const tableRows = rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    amount: r.amount,
+    type: r.type,
+    merchant: r.merchant,
+    description: r.description,
+    accountName: r.accountName,
+    categoryId: r.categoryId,
+    categoryName: r.categoryName,
+    externalTransactionId: r.externalTransactionId,
+  }));
 
   return (
     <div className="space-y-6">
@@ -113,7 +126,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               action={{ label: 'Add transaction', href: '/transactions/new' }}
             />
           ) : (
-            <TransactionsTable rows={rows} categories={categoryOptions} />
+            <TransactionsTable rows={tableRows} categories={categoryOptions} />
           )}
         </CardContent>
       </Card>

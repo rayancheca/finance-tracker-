@@ -25,7 +25,16 @@ export default async function CategoriesPage() {
           subline="Categories are seeded automatically on your first sign-in."
         />
       ) : (
-        <CategoryBoard categories={cats} />
+        <CategoryBoard
+          categories={cats.map((c) => ({
+            id: c.id,
+            name: c.name,
+            group: c.group,
+            kind: c.kind,
+            monthlyBudget: c.monthlyBudget,
+            isArchived: c.isArchived,
+          }))}
+        />
       )}
     </div>
   );

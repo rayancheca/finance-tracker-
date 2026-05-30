@@ -410,6 +410,44 @@ export async function getAccountBalanceSeries(
   return Array.from(byDate.entries()).map(([date, balance]) => ({ date, balance }));
 }
 
+// Recent activity for one account, INCLUDING inbound transfers (rows where this
+// account is the transfer destination). `inbound` tells the caller which sign to
+// show, so the table agrees with getAccountBalanceSeries about what counts.
+export async function getAccountActivity(userId: string, id: string, limit = 25) {
+  const rows = await db
+    .select({
+      id: transactions.id,
+      date: transactions.date,
+      amount: transactions.amount,
+      type: transactions.type,
+      merchant: transactions.merchant,
+      description: transactions.description,
+      transferAccountId: transactions.transferAccountId,
+      categoryName: categories.name,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        or(eq(transactions.accountId, id), eq(transactions.transferAccountId, id)),
+      ),
+    )
+    .orderBy(desc(transactions.date), desc(transactions.createdAt))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    amount: r.amount,
+    type: r.type,
+    merchant: r.merchant,
+    description: r.description,
+    categoryName: r.categoryName,
+    inbound: r.type === 'income' || (r.type === 'transfer' && r.transferAccountId === id),
+  }));
+}
+
 export async function getNetWorthSeries(userId: string) {
   const snaps = await db
     .select({ date: netWorthSnapshots.date, balance: netWorthSnapshots.balance })

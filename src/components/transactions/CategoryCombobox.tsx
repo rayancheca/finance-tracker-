@@ -20,18 +20,28 @@ export interface CategoryOption {
   id: string;
   name: string;
   group: string;
+  kind: 'income' | 'expense' | 'savings' | 'transfer';
 }
 
 interface CategoryComboboxProps {
   transactionId: string;
+  transactionType: 'income' | 'expense' | 'transfer';
   currentCategoryId: string | null;
   currentLabel: string;
   categories: CategoryOption[];
   onChanged?: () => void;
 }
 
+// Mirrors assertCategoryMatchesType on the server: income rows need an income
+// category; expense rows accept anything but income.
+function allowedForType(kind: CategoryOption['kind'], type: 'income' | 'expense' | 'transfer') {
+  if (type === 'income') return kind === 'income';
+  return kind !== 'income';
+}
+
 export function CategoryCombobox({
   transactionId,
+  transactionType,
   currentCategoryId,
   currentLabel,
   categories,
@@ -56,6 +66,7 @@ export function CategoryCombobox({
 
   const byGroup = new Map<string, CategoryOption[]>();
   for (const c of categories) {
+    if (!allowedForType(c.kind, transactionType)) continue;
     if (!byGroup.has(c.group)) byGroup.set(c.group, []);
     byGroup.get(c.group)!.push(c);
   }
