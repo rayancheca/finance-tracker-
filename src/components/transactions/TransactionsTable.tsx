@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { Zap } from 'lucide-react';
+import { CheckCircle2, Tags, Trash2, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -12,7 +14,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { CategoryCombobox, type CategoryOption } from './CategoryCombobox';
+import {
+  bulkDeleteTransactions,
+  bulkSetCleared,
+  bulkUpdateCategory,
+} from '@/actions/transactions';
 import { formatUSD } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +48,8 @@ export interface TransactionRow {
   externalTransactionId: string | null;
 }
 
+type ActionResult = Awaited<ReturnType<typeof bulkDeleteTransactions>>;
+
 interface TransactionsTableProps {
   rows: TransactionRow[];
   categories: CategoryOption[];
@@ -36,64 +57,190 @@ interface TransactionsTableProps {
 
 export function TransactionsTable({ rows, categories }: TransactionsTableProps) {
   const router = useRouter();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const allSelected = rows.length > 0 && selected.size === rows.length;
+  const headerState: boolean | 'indeterminate' = allSelected
+    ? true
+    : selected.size > 0
+      ? 'indeterminate'
+      : false;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function runBulk(action: () => Promise<ActionResult>, successMsg: string) {
+    startTransition(async () => {
+      const res = await action();
+      if (res.ok) {
+        toast.success(successMsg);
+        setSelected(new Set());
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function handleDelete() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`)) return;
+    runBulk(() => bulkDeleteTransactions(ids), `Deleted ${ids.length}`);
+  }
+
+  function handleSetCategory(categoryId: string) {
+    setCatMenuOpen(false);
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    runBulk(() => bulkUpdateCategory(ids, categoryId), 'Category updated');
+  }
+
+  function handleMarkCleared() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    runBulk(() => bulkSetCleared(ids, true), 'Marked cleared');
+  }
+
+  const byGroup = new Map<string, CategoryOption[]>();
+  for (const c of categories) {
+    if (!byGroup.has(c.group)) byGroup.set(c.group, []);
+    byGroup.get(c.group)!.push(c);
+  }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Date</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Account</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell className="tabular text-sm">{format(new Date(r.date), 'MMM d')}</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                {r.externalTransactionId && <Zap className="h-3 w-3 text-accent" />}
-                <div>
-                  <div className="text-sm">{r.description}</div>
-                  {r.merchant && (
-                    <div className="text-xs text-muted-foreground">{r.merchant}</div>
-                  )}
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <CategoryCombobox
-                transactionId={r.id}
-                currentCategoryId={r.categoryId}
-                currentLabel={r.categoryName ?? r.type}
-                categories={categories}
-                onChanged={() => router.refresh()}
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={headerState}
+                onCheckedChange={toggleAll}
+                aria-label="Select all transactions"
               />
-            </TableCell>
-            <TableCell className="text-sm">{r.accountName}</TableCell>
-            <TableCell
-              className={cn(
-                'tabular text-right text-sm font-medium',
-                r.type === 'income' ? 'text-income' : 'text-expense',
-              )}
-            >
-              {r.type === 'income' ? '+' : '−'}
-              {formatUSD(parseFloat(r.amount))}
-            </TableCell>
-            <TableCell className="text-right">
-              <Link
-                href={`/transactions/${r.id}/edit`}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Edit
-              </Link>
-            </TableCell>
+            </TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Account</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+            <TableHead></TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => {
+            const isSelected = selected.has(r.id);
+            return (
+              <TableRow key={r.id} data-state={isSelected ? 'selected' : undefined}>
+                <TableCell className="w-10">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleOne(r.id)}
+                    aria-label={`Select ${r.description ?? 'transaction'}`}
+                  />
+                </TableCell>
+                <TableCell className="tabular text-sm">
+                  {format(new Date(r.date), 'MMM d')}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {r.externalTransactionId && <Zap className="h-3 w-3 text-accent" />}
+                    <div>
+                      <div className="text-sm">{r.description}</div>
+                      {r.merchant && (
+                        <div className="text-xs text-muted-foreground">{r.merchant}</div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <CategoryCombobox
+                    transactionId={r.id}
+                    currentCategoryId={r.categoryId}
+                    currentLabel={r.categoryName ?? r.type}
+                    categories={categories}
+                    onChanged={() => router.refresh()}
+                  />
+                </TableCell>
+                <TableCell className="text-sm">{r.accountName}</TableCell>
+                <TableCell
+                  className={cn(
+                    'tabular text-right text-sm font-medium',
+                    r.type === 'income' ? 'text-income' : 'text-expense',
+                  )}
+                >
+                  {r.type === 'income' ? '+' : '−'}
+                  {formatUSD(parseFloat(r.amount))}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Link
+                    href={`/transactions/${r.id}/edit`}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Edit
+                  </Link>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+
+      {selected.size > 0 && (
+        <div className="pointer-events-none sticky bottom-4 z-10 flex justify-center px-4">
+          <div className="pointer-events-auto flex items-center gap-1 rounded-full border bg-card/90 p-1.5 pl-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/75">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <Separator orientation="vertical" className="mx-1 h-5" />
+            <Button variant="ghost" size="sm" onClick={handleMarkCleared} disabled={pending}>
+              <CheckCircle2 className="mr-1 h-4 w-4" /> Mark cleared
+            </Button>
+            <Popover open={catMenuOpen} onOpenChange={setCatMenuOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={pending}>
+                  <Tags className="mr-1 h-4 w-4" /> Set category…
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <Command>
+                  <CommandInput placeholder="Search categories…" />
+                  <CommandList>
+                    <CommandEmpty>No category found.</CommandEmpty>
+                    {Array.from(byGroup.entries()).map(([group, opts]) => (
+                      <CommandGroup key={group} heading={group}>
+                        {opts.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${group} ${c.name}`}
+                            onSelect={() => handleSetCategory(c.id)}
+                          >
+                            {c.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending}>
+              <Trash2 className="mr-1 h-4 w-4 text-destructive" /> Delete
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
