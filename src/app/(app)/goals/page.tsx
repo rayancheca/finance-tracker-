@@ -1,6 +1,8 @@
+import { Target } from 'lucide-react';
 import { listGoals } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 import { GoalCard } from '@/components/goals/GoalCard';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +23,12 @@ export default async function GoalsPage() {
           <GoalCard key={g.id} goal={g} />
         ))}
         {goals.length === 0 && (
-          <p className="text-sm text-muted-foreground">No goals yet.</p>
+          <EmptyState
+            icon={Target}
+            heading="No goals yet"
+            subline="Savings goals are seeded automatically on your first sign-in."
+            className="col-span-full"
+          />
         )}
       </div>
     </div>

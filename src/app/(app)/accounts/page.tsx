@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getAccountBalances } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 import { formatUSD } from '@/lib/currency';
-import { Zap } from 'lucide-react';
+import { Wallet, Zap } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,12 @@ export default async function AccountsPage() {
           </Link>
         ))}
         {accs.length === 0 && (
-          <p className="text-sm text-muted-foreground">No accounts yet.</p>
+          <EmptyState
+            icon={Wallet}
+            heading="No accounts yet"
+            subline="Accounts are seeded automatically on your first sign-in."
+            className="col-span-full"
+          />
         )}
       </div>
     </div>

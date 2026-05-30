@@ -1,4 +1,6 @@
+import { FolderTree } from 'lucide-react';
 import { CategoryBoard } from '@/components/categories/CategoryBoard';
+import { EmptyState } from '@/components/ui/empty-state';
 import { listCategories } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 
@@ -17,9 +19,11 @@ export default async function CategoriesPage() {
         </p>
       </div>
       {cats.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No categories yet — they will be seeded automatically on first sign-in.
-        </p>
+        <EmptyState
+          icon={FolderTree}
+          heading="No categories yet"
+          subline="Categories are seeded automatically on your first sign-in."
+        />
       ) : (
         <CategoryBoard categories={cats} />
       )}

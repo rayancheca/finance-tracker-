@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
 import { TransactionsTable } from '@/components/transactions/TransactionsTable';
 import { listTransactions, listAccounts, listCategories } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Receipt, Upload } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,16 +106,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <Card>
         <CardContent className="p-0">
           {rows.length === 0 ? (
-            <div className="p-12 text-center">
-              <h3 className="font-medium">No transactions match</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Adjust filters or{' '}
-                <Link href="/transactions/new" className="text-primary underline">
-                  add a transaction
-                </Link>
-                .
-              </p>
-            </div>
+            <EmptyState
+              icon={Receipt}
+              heading="No transactions match"
+              subline="Adjust your filters, or add a transaction to get started."
+              action={{ label: 'Add transaction', href: '/transactions/new' }}
+            />
           ) : (
             <TransactionsTable rows={rows} categories={categoryOptions} />
           )}

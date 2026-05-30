@@ -6,6 +6,8 @@ import { formatUSD, formatSignedUSD } from '@/lib/currency';
 import { format } from 'date-fns';
 import { NetWorthChart } from '@/components/net-worth/NetWorthChart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LineChart } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +61,11 @@ export default async function NetWorthPage() {
           <Card>
             <CardContent className="p-0">
               {snaps.length === 0 ? (
-                <p className="p-4 text-sm text-muted-foreground">No snapshots yet.</p>
+                <EmptyState
+                  icon={LineChart}
+                  heading="No snapshots yet"
+                  subline="Snapshots capture each account's balance over time."
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -92,13 +98,12 @@ export default async function NetWorthPage() {
           <Card>
             <CardContent className="p-0">
               {holds.length === 0 ? (
-                <p className="p-4 text-sm text-muted-foreground">
-                  No holdings yet. Connect a brokerage in{' '}
-                  <a href="/connections" className="text-primary underline">
-                    Connections
-                  </a>{' '}
-                  to populate this.
-                </p>
+                <EmptyState
+                  icon={LineChart}
+                  heading="No holdings yet"
+                  subline="Connect a brokerage in Connections to populate your positions."
+                  action={{ label: 'Go to Connections', href: '/connections' }}
+                />
               ) : (
                 <>
                   <Table>
