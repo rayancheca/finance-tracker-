@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getAccountBalances } from '@/db/queries';
@@ -21,35 +22,41 @@ export default async function AccountsPage() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {accs.map((a) => (
-          <Card key={a.id} className="overflow-hidden">
-            <div className="h-1.5" style={{ background: a.color ?? 'hsl(var(--primary))' }} />
-            <CardContent className="space-y-2 p-5">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{a.name}</h3>
-                    {a.isAutoSynced && (
-                      <span title="Auto-synced">
-                        <Zap className="h-3.5 w-3.5 text-accent" />
-                      </span>
-                    )}
+          <Link
+            key={a.id}
+            href={`/accounts/${a.id}`}
+            className="rounded-xl transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Card className="h-full overflow-hidden">
+              <div className="h-1.5" style={{ background: a.color ?? 'hsl(var(--primary))' }} />
+              <CardContent className="space-y-2 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{a.name}</h3>
+                      {a.isAutoSynced && (
+                        <span title="Auto-synced">
+                          <Zap className="h-3.5 w-3.5 text-accent" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {a.institution ?? a.type} {a.last4 ? `· ••${a.last4}` : ''}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {a.institution ?? a.type} {a.last4 ? `· ••${a.last4}` : ''}
-                  </div>
+                  <Badge variant="outline" className="capitalize">
+                    {a.type.replace('_', ' ')}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="capitalize">
-                  {a.type.replace('_', ' ')}
-                </Badge>
-              </div>
-              <div className="tabular font-display text-2xl">{formatUSD(a.balance)}</div>
-              {!a.isActive && (
-                <Badge variant="secondary" className="mt-1">
-                  archived
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
+                <div className="tabular font-display text-2xl">{formatUSD(a.balance)}</div>
+                {!a.isActive && (
+                  <Badge variant="secondary" className="mt-1">
+                    archived
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
         ))}
         {accs.length === 0 && (
           <p className="text-sm text-muted-foreground">No accounts yet.</p>

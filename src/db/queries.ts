@@ -9,7 +9,7 @@ import {
   recurringTransactions,
   holdings,
 } from './schema';
-import { and, asc, desc, eq, gte, lte, sql, isNull, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, or, sql, isNull, inArray } from 'drizzle-orm';
 import { SETTINGS_DEFAULTS, type SettingsKey } from '@/lib/validators';
 import {
   currentMonthRange,
@@ -360,6 +360,54 @@ export async function getAccountBalances(userId: string) {
       Date.now() - new Date(a.lastBalanceSync).getTime() < 48 * 3600 * 1000;
     return { ...a, balance: fresh && live !== null ? live : computedBalance, computedBalance };
   });
+}
+
+export async function getAccountBalanceSeries(
+  userId: string,
+  id: string,
+): Promise<Array<{ date: string; balance: number }>> {
+  const [acct] = await db
+    .select({ openingBalance: accounts.openingBalance })
+    .from(accounts)
+    .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
+    .limit(1);
+  if (!acct) return [];
+
+  const txns = await db
+    .select({
+      date: transactions.date,
+      amount: transactions.amount,
+      type: transactions.type,
+      accountId: transactions.accountId,
+      transferAccountId: transactions.transferAccountId,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        or(eq(transactions.accountId, id), eq(transactions.transferAccountId, id)),
+      ),
+    )
+    .orderBy(asc(transactions.date), asc(transactions.createdAt));
+
+  // Fold a running balance using the same signing rules as getAccountBalances:
+  // income in, expense out, and transfers signed by direction relative to this account.
+  let running = parseFloat(acct.openingBalance);
+  const byDate = new Map<string, number>();
+  for (const t of txns) {
+    const amt = parseFloat(t.amount);
+    if (t.type === 'transfer') {
+      if (t.accountId === id) running -= amt;
+      if (t.transferAccountId === id) running += amt;
+    } else if (t.type === 'income') {
+      running += amt;
+    } else {
+      running -= amt;
+    }
+    byDate.set(t.date, running);
+  }
+
+  return Array.from(byDate.entries()).map(([date, balance]) => ({ date, balance }));
 }
 
 export async function getNetWorthSeries(userId: string) {
