@@ -1,0 +1,11 @@
+Date,Description,Amount,Type,Merchant
+2026-05-01,Trader Joe's groceries,-87.42,debit,Trader Joe's
+2026-05-02,Paycheck,2081.00,credit,IT Italian Trattoria
+2026-05-03,Spotify monthly,-11.99,debit,Spotify
+2026-05-05,Uber to airport,-32.10,debit,Uber
+2026-05-08,Coffee,-4.75,debit,Blue Bottle
+2026-05-12,Restaurant dinner,-58.20,debit,Carbone
+2026-05-15,Refund,12.50,credit,Amazon
+2026-05-18,Netflix,-15.99,debit,Netflix
+2026-05-20,Gym,-49.00,debit,Equinox
+2026-05-22,Pharmacy,-22.18,debit,CVS
