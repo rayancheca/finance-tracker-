@@ -40,16 +40,16 @@ A single user (Rayan) signs in once and gets:
 - **A dashboard** with eight KPI tiles (net income, expenses, cash flow, savings rate, net worth, top category, top goal, NYC lease liability) plus three charts (Income vs Expenses bar, Expense Breakdown donut, 12-month Net Cash Flow line).
 - **Full transaction CRUD** — add, edit, filter, search; **re-assign a category inline** from the table via a searchable combobox; **bulk-select** rows and act on them from a sticky toolbar (delete, set category, mark cleared); CSV import with column-mapping and duplicate detection; CSV + XLSX export.
 - **Category management** with monthly budgets, groups, and **drag-to-reorder within a group**.
-- **Account management** — checking, savings, credit card, brokerage, cash, retirement — each with a **detail page** (`/accounts/[id]`) showing a balance-over-time chart and that account's recent activity (including inbound transfers).
+- **Account management** — **add / edit / delete** checking, savings, credit-card, brokerage, cash, and retirement accounts with a current balance (use a negative for money owed on a card). Each has a **detail page** (`/accounts/[id]`) with a balance-over-time chart and that account's recent activity (including inbound transfers).
 - **Savings goals** with progress bars, contributions log, and confetti when a goal completes.
-- **Net worth snapshots** with a trend chart and a Holdings tab for brokerage positions (populated by SnapTrade when Phase 11.5 is enabled).
+- **Net worth snapshots** with a trend chart and a **Holdings tab** where you add positions or **import a CSV** (ticker + shares); current price, market value, and % of portfolio come from **live Yahoo Finance quotes** (no brokerage API needed) and refresh on demand.
 - **Recurring bills/subscriptions** with auto-post on next-due-date and a monthly-equivalent summary.
 - **NYC lease overhang tracker** showing months remaining, effective monthly share (with sublet offset), and what releasing would save.
 - **Tax calculator** using 2025 federal brackets + FICA + simplified state rates, configurable, with bracket breakdown.
 - **Monthly pivot report** (category × month for any year) + an **annual summary** report with comparison KPIs.
 - **Settings** controlling salary, tax assumptions, lease state, housing scenario, and app preferences (theme, date format).
 
-It is intentionally **not** Mint or YNAB — no Plaid syncing in v1, no multi-user/household, no mobile-native app, no investment-portfolio analytics beyond holding totals. See § 16 for the live-aggregation extension (Phase 11.5).
+It is intentionally **not** Mint or YNAB — accounts and transactions are entered manually or via CSV (no automatic bank syncing in v1), it's single-user, and there's no mobile-native app. Holdings are priced from live market quotes but it's not a full portfolio-analytics tool. See § 16 for the optional live bank/brokerage aggregation extension (Phase 11.5).
 
 ---
 
@@ -89,6 +89,14 @@ It is intentionally **not** Mint or YNAB — no Plaid syncing in v1, no multi-us
 
 ![Tax calculator](docs/screenshots/09-tax-calculator.png)
 ![Goals grid](docs/screenshots/06-goals.png)
+
+**Edit your own data** — add / edit real accounts and cards (the app's first modal):
+
+![Add account dialog](docs/screenshots/10-add-account-dialog.png)
+
+**Investments with live prices** — add or CSV-import holdings; price, market value, and % of portfolio come from live Yahoo Finance quotes:
+
+![Holdings with live market prices](docs/screenshots/11-holdings-live-prices.png)
 
 ### 2.2. App shell
 
@@ -689,6 +697,7 @@ All inputs use Zod schemas defined in `src/lib/validators.ts`. The schemas are s
 - Auto-synced accounts show a ⚡ icon (Phase 11.5).
 - If `lastReportedBalance` exists and is <48h old, that's preferred over the computed balance.
 - **Each card links to its detail page (P2):** `/accounts/[id]`.
+- **Add / edit / delete accounts:** "Add account" opens a modal form (name, type, current balance, institution, last-4, color); the detail page has Edit / Archive / Delete. Set a negative balance for money owed on a card.
 
 ### `/accounts/[id]` — Account detail (P2)
 
@@ -706,7 +715,8 @@ All inputs use Zod schemas defined in `src/lib/validators.ts`. The schemas are s
 ### `/net-worth`
 
 - Header KPI: sum of latest snapshot per account (or computed if no snapshots).
-- Three tabs: **Trend** (area chart), **Snapshots** (history table), **Holdings** (Phase 11.5 brokerage positions).
+- Three tabs: **Trend** (area chart), **Snapshots** (history table), and **Holdings**.
+- **Holdings** is a manager: add a position (ticker + shares), import a CSV (`symbol`, `quantity`, optional cost basis), refresh, or delete. You supply the quantities; **current price, market value, and % of portfolio come from live Yahoo Finance quotes** (`yahoo-finance2`) and update on **Refresh prices**. No brokerage API required.
 
 ### `/recurring`
 
@@ -1002,6 +1012,11 @@ Each item is a separate commit; `typecheck` + `lint` + `test` (43/43) + producti
 - **Zero-cloud `LOCAL_DEV` mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)): a `NEXT_PUBLIC_LOCAL_DEV` flag swaps the DB layer to a local Postgres (`pg`) and replaces Clerk with a fixed dev user. Gated so production stays on Neon + Clerk, verified by the placeholder-creds production build.
 - **Screenshots** captured from a live local run (light + dark) via a committed `scripts/capture-screenshots.mjs`, embedded in [§ 2.1](#21-screenshots).
 
+### ✅ Done — editable data + live holdings
+
+- **Account / card CRUD from the UI** (add on `/accounts`, edit / archive / delete on the detail page) — the seeded demo accounts can be replaced with real ones, balances and all.
+- **Holdings + live market data:** add positions or import a CSV (ticker + shares); current price, market value, and % of portfolio are computed from **live Yahoo Finance quotes** (`yahoo-finance2`) and refresh on demand. Holdings upsert on (account, symbol). Verified end-to-end against real quotes in local dev.
+
 ### 🚧 What's left
 
 | Area | State | Blocked on |
@@ -1035,4 +1050,5 @@ See `BUILD_LOG.md` for the full checklist with current state.
 - **State income tax** uses simplified flat rates (FL/TX/WA/NV = 0%; NY/NJ/CA/MA approximations). Brackets, credits, and deductions are not modeled.
 - **Auto-sync (when enabled)** can lag, miss recurring transactions, or temporarily disconnect when banks update security. Treat synced data as a starting point — review categorizations. Your manual edits always win over future sync updates.
 - **Robinhood activity** (buys/sells/dividends) intentionally does NOT flow into the main transactions table. If/when Phase 11.5 is enabled, it lives on the brokerage account's Activity tab.
+- **Market data** for holdings comes from public Yahoo Finance endpoints via `yahoo-finance2`. It is delayed/unofficial, has no SLA, and is for personal tracking only — not for trading decisions. Prices update only when you hit **Refresh prices**.
 - **Single user.** The schema supports adding more users, but the UI does not surface anything multi-user. Don't share your sign-in.
