@@ -1,4 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+
+const LOCAL_DEV = process.env.NEXT_PUBLIC_LOCAL_DEV === '1';
 
 const isPublic = createRouteMatcher([
   '/sign-in(.*)',
@@ -7,11 +10,14 @@ const isPublic = createRouteMatcher([
   '/api/cron/(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublic(req)) {
-    await auth.protect();
-  }
-});
+// LOCAL_DEV has no Clerk session, so the auth gate is a pass-through.
+export default LOCAL_DEV
+  ? () => NextResponse.next()
+  : clerkMiddleware(async (auth, req) => {
+      if (!isPublic(req)) {
+        await auth.protect();
+      }
+    });
 
 export const config = {
   matcher: [
