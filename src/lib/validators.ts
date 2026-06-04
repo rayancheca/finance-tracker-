@@ -47,6 +47,17 @@ export const accountInputSchema = z.object({
 });
 export type AccountInput = z.infer<typeof accountInputSchema>;
 
+// ─── Holding (brokerage position) ──────────────────────────────────
+
+export const holdingInputSchema = z.object({
+  accountId: z.string().uuid(),
+  symbol: z.string().min(1).max(20),
+  name: z.string().max(120).nullable().optional(),
+  quantity: z.number().positive().max(1_000_000_000),
+  costBasis: z.number().min(0).max(100_000_000).nullable().optional(),
+});
+export type HoldingInput = z.infer<typeof holdingInputSchema>;
+
 // ─── Category ──────────────────────────────────────────────────────
 
 export const categoryInputSchema = z.object({

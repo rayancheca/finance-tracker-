@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth';
 import { formatUSD, formatSignedUSD } from '@/lib/currency';
 import { format } from 'date-fns';
 import { NetWorthChart } from '@/components/net-worth/NetWorthChart';
+import { HoldingsManager } from '@/components/net-worth/HoldingsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LineChart } from 'lucide-react';
@@ -22,6 +23,14 @@ export default async function NetWorthPage() {
 
   const netWorth = balances.reduce((s, a) => s + a.balance, 0);
   const totalMarket = holds.reduce((s, h) => s + parseFloat(h.marketValue), 0);
+
+  const investingAccounts = balances.filter(
+    (a) => a.type === 'brokerage' || a.type === 'retirement',
+  );
+  const holdingAccounts = (investingAccounts.length > 0 ? investingAccounts : balances).map((a) => ({
+    id: a.id,
+    name: a.name,
+  }));
 
   return (
     <div className="space-y-6">
@@ -97,49 +106,11 @@ export default async function NetWorthPage() {
         <TabsContent value="holdings">
           <Card>
             <CardContent className="p-0">
-              {holds.length === 0 ? (
-                <EmptyState
-                  icon={LineChart}
-                  heading="No holdings yet"
-                  subline="Connect a brokerage in Connections to populate your positions."
-                  action={{ label: 'Go to Connections', href: '/connections' }}
-                />
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Symbol</TableHead>
-                        <TableHead>Account</TableHead>
-                        <TableHead className="text-right">Qty</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Market Value</TableHead>
-                        <TableHead className="text-right">% Portfolio</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {holds.map((h) => {
-                        const mv = parseFloat(h.marketValue);
-                        const pct = totalMarket > 0 ? (mv / totalMarket) * 100 : 0;
-                        return (
-                          <TableRow key={h.id}>
-                            <TableCell className="font-medium">{h.symbol}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {h.accountName}
-                            </TableCell>
-                            <TableCell className="tabular text-right">{h.quantity}</TableCell>
-                            <TableCell className="tabular text-right">
-                              {h.currentPrice ? formatUSD(parseFloat(h.currentPrice)) : '—'}
-                            </TableCell>
-                            <TableCell className="tabular text-right">{formatUSD(mv)}</TableCell>
-                            <TableCell className="tabular text-right">{pct.toFixed(1)}%</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </>
-              )}
+              <HoldingsManager
+                holdings={holds}
+                accounts={holdingAccounts}
+                totalMarket={totalMarket}
+              />
             </CardContent>
           </Card>
         </TabsContent>
