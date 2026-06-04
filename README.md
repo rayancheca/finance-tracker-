@@ -4,7 +4,7 @@ A single-user personal finance dashboard — manual transaction tracking, budget
 
 Lives at (eventually) `finance.rayancheca.com`. For now: a Vercel preview URL once deployed.
 
-> **Status:** v1 (Phases 0–13) is complete and on `main`. This branch (**PR #2**) adds the **P2 UX-polish** pass — drag-to-reorder categories, inline + bulk transaction editing, account detail pages, and empty-state illustrations — plus a zero-cloud **local dev mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)) used to capture the screenshots above against a local Postgres. `typecheck`, `lint`, the **43/43** unit tests, and a production `build` (21 routes) all pass locally. Still outstanding: the Playwright **e2e suite**, **Phase 11.5** live aggregation (needs Plaid/SnapTrade keys), and the **Vercel deploy**. See [§ 19](#19-status--whats-left) for the full roadmap.
+> **Status:** Application code complete and on `main`. Covers v1 (Phases 0–13) plus a **P2 UX-polish** pass (drag-to-reorder categories, inline + bulk transaction editing, account detail pages, empty states), **account/card CRUD**, **holdings with live market prices**, and a zero-cloud **local dev mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)) — which is how the screenshots below were captured against a local Postgres. `typecheck`, `lint`, the **43/43** unit tests, and a production `build` all pass locally. Still outstanding: the Playwright **e2e suite**, **Phase 11.5** live bank/brokerage aggregation (needs Plaid/SnapTrade keys), and the **Vercel deploy**. See [§ 19](#19-status--whats-left) for the full roadmap.
 
 ---
 
@@ -351,7 +351,7 @@ git clone https://github.com/rayancheca/finance-tracker-.git
 cd finance-tracker-
 ```
 
-> `main` is the populated default branch (v1, Phases 0–13). The **P2 UX-polish** pass lives on `p2/ux-polish` (PR #2); check that branch out (`git checkout p2/ux-polish`) or merge the PR to get it on `main`.
+> `main` has everything described in this README. To run it with **no cloud accounts**, jump to [§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots).
 
 ### 6.2. Install dependencies
 
