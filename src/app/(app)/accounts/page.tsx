@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { AccountDialog } from '@/components/accounts/AccountDialog';
 import { getAccountBalances } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 import { formatUSD } from '@/lib/currency';
@@ -15,11 +16,14 @@ export default async function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Accounts</h1>
-        <p className="text-sm text-muted-foreground">
-          Where your money lives. Auto-synced accounts show a ⚡ badge.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Accounts</h1>
+          <p className="text-sm text-muted-foreground">
+            Where your money lives. Auto-synced accounts show a ⚡ badge.
+          </p>
+        </div>
+        <AccountDialog />
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {accs.map((a) => (

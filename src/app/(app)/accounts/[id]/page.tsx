@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
-import { ChevronLeft, Zap } from 'lucide-react';
+import { ChevronLeft, Pencil, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AccountDialog } from '@/components/accounts/AccountDialog';
 import {
   Table,
   TableBody,
@@ -62,9 +63,27 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
                 {account.last4 ? ` · ••${account.last4}` : ''}
               </p>
             </div>
-            <Badge variant="outline" className="capitalize">
-              {account.type.replace('_', ' ')}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="capitalize">
+                {account.type.replace('_', ' ')}
+              </Badge>
+              <AccountDialog
+                initial={{
+                  id: account.id,
+                  name: account.name,
+                  type: account.type,
+                  institution: account.institution,
+                  last4: account.last4,
+                  openingBalance: parseFloat(account.openingBalance),
+                  color: account.color,
+                  notes: account.notes,
+                }}
+              >
+                <Button variant="outline" size="sm">
+                  <Pencil className="mr-1 h-4 w-4" /> Edit
+                </Button>
+              </AccountDialog>
+            </div>
           </div>
           <div className="tabular mt-4 font-display text-4xl">{formatUSD(account.balance)}</div>
           {!account.isActive && (
