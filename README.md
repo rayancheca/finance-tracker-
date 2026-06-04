@@ -4,7 +4,7 @@ A single-user personal finance dashboard — manual transaction tracking, budget
 
 Lives at (eventually) `finance.rayancheca.com`. For now: a Vercel preview URL once deployed.
 
-> **Status:** v1 (Phases 0–13) is complete and on `main`. This branch (**PR #2**) adds the **P2 UX-polish** pass — drag-to-reorder categories, inline + bulk transaction editing, account detail pages, and empty-state illustrations. `typecheck`, `lint`, the **43/43** unit tests, and a production `build` (21 routes) all pass locally. Still outstanding: the Playwright **e2e suite** and **live screenshots** (both need a Clerk dev instance + a database), **Phase 11.5** live aggregation (needs Plaid/SnapTrade keys), and the **Vercel deploy**. See [§ 19](#19-status--whats-left) for the full roadmap.
+> **Status:** v1 (Phases 0–13) is complete and on `main`. This branch (**PR #2**) adds the **P2 UX-polish** pass — drag-to-reorder categories, inline + bulk transaction editing, account detail pages, and empty-state illustrations — plus a zero-cloud **local dev mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)) used to capture the screenshots above against a local Postgres. `typecheck`, `lint`, the **43/43** unit tests, and a production `build` (21 routes) all pass locally. Still outstanding: the Playwright **e2e suite**, **Phase 11.5** live aggregation (needs Plaid/SnapTrade keys), and the **Vercel deploy**. See [§ 19](#19-status--whats-left) for the full roadmap.
 
 ---
 
@@ -55,9 +55,42 @@ It is intentionally **not** Mint or YNAB — no Plaid syncing in v1, no multi-us
 
 ## 2. Screenshots & feature tour
 
-> **On screenshots:** real screenshots require a running app with real data, which means a Clerk dev instance + a database (every route is auth-protected and data-backed). Those credentials aren't provisioned yet, so this build ships with the route map and the guided golden-path tour below instead of fabricated/mockup images. The exact Playwright capture procedure is in [§ 2.3](#23-capturing-screenshots) — the moment a Clerk key + a Postgres URL exist, the numbered walkthrough below can be captured to `docs/screenshots/` and linked here.
+> Captured from a live local run with seeded demo data — the zero-cloud `LOCAL_DEV` path (local Postgres, no Neon/Clerk accounts) documented in [§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots). Re-generate any time with `node scripts/capture-screenshots.mjs`.
 
-### 2.1. App shell
+### 2.1. Screenshots
+
+**Dashboard** — eight KPI tiles, three charts (Income vs Expenses, Expense Breakdown, 12-mo Net Cash Flow), recent activity, and goal progress, in light and dark:
+
+![Dashboard, light mode](docs/screenshots/01-dashboard-light.png)
+![Dashboard, dark mode](docs/screenshots/01-dashboard-dark.png)
+
+**Transactions — bulk-select toolbar (P2).** Selecting rows reveals a floating toolbar: *Mark cleared*, *Set category…*, *Delete*.
+
+![Transactions with the bulk-actions toolbar](docs/screenshots/02-transactions-bulk-toolbar.png)
+
+**Transactions — inline category edit (P2).** Clicking a category badge opens a searchable combobox, scoped to the row's transaction type.
+
+![Inline category combobox open](docs/screenshots/02b-transactions-inline-category.png)
+
+**Categories — drag-to-reorder (P2).** Each row has a grip handle; reordering within a group persists.
+
+![Categories with drag handles](docs/screenshots/03-categories-reorder.png)
+
+**Account detail (P2)** — header, balance-over-time area chart, and direction-aware recent activity:
+
+![Account detail page](docs/screenshots/05-account-detail-light.png)
+
+**Net worth trend** and the **monthly category × month report**:
+
+![Net worth trend](docs/screenshots/07-net-worth-trend.png)
+![Monthly report pivot](docs/screenshots/08-reports-monthly.png)
+
+**Tax calculator** (2025 brackets + FICA + state) and **Goals** (progress bars, one completed):
+
+![Tax calculator](docs/screenshots/09-tax-calculator.png)
+![Goals grid](docs/screenshots/06-goals.png)
+
+### 2.2. App shell
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -81,9 +114,9 @@ Mobile: sidebar collapses → bottom nav (Home / Tx / + / Goals / Settings).
 The center "+" button is a FAB that opens the new-transaction form.
 ```
 
-### 2.2. Guided golden-path tour
+### 2.3. Guided golden-path tour
 
-The walkthrough a first-time user follows, start to finish. Each step is a distinct, screenshot-worthy state.
+The walkthrough a first-time user follows, start to finish. Each step is a distinct, screenshot-worthy state. (Steps 1–2 describe the production Clerk flow; in `LOCAL_DEV` a fixed dev user is provisioned automatically.)
 
 1. **Sign in.** Hitting any route while signed out redirects to `/sign-in` (Clerk). Sign-up is allowlist-restricted to the owner's email, so the app is effectively single-user.
 2. **First-run provisioning.** On the first authenticated request, the user is mirrored into the `users` table and `seedNewUser()` inserts 5 accounts, 46 categories, 6 goals, and 24 settings — so the dashboard is populated immediately, never empty.
@@ -97,19 +130,35 @@ The walkthrough a first-time user follows, start to finish. Each step is a disti
 10. **Reports & export (`/reports/*`).** Monthly category × month pivot and an annual summary, with year-scoped CSV/XLSX download.
 11. **Empty states. New in P2:** every list surface (transactions, categories, accounts, goals, net-worth, recurring, connections) renders a designed empty state (icon + heading + subline + CTA) instead of bare text.
 
-### 2.3. Capturing screenshots
+### 2.4. Running locally (zero cloud) + capturing screenshots
 
-When a Clerk dev key + a Postgres URL are available, capture the tour above with the existing Playwright setup:
+To run with **no Neon and no Clerk account**, set `NEXT_PUBLIC_LOCAL_DEV=1`. It points the DB layer at a local Postgres (via `pg`) and replaces Clerk with a single fixed dev user. Production is unaffected — with the flag unset it uses Neon + Clerk exactly as before.
 
 ```bash
-cp .env.example .env.local        # fill DATABASE_URL + Clerk keys
-npm run db:push                   # create tables
-npm run dev                       # start the app
-# in another shell, drive the golden path and snapshot each state:
-npx playwright test               # (a capture spec writes PNGs to docs/screenshots/)
+# 1. Local Postgres (macOS / Homebrew)
+brew install postgresql@16 && brew services start postgresql@16
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"   # postgresql@16 is keg-only
+createdb finance_tracker
+
+# 2. Point the app at it, in local mode
+cat > .env.local <<EOF
+DATABASE_URL="postgres://$(whoami)@localhost:5432/finance_tracker"
+NEXT_PUBLIC_LOCAL_DEV="1"
+EOF
+
+# 3. Create the tables, then run
+DATABASE_URL="postgres://$(whoami)@localhost:5432/finance_tracker" npm run db:push   # answer "Yes"
+npm run dev    # http://localhost:3000 — no sign-in; a dev user is auto-seeded
 ```
 
-Capture each numbered step above at the 1440px and 375px widths, in both light and dark mode, then embed them here with relative paths (`docs/screenshots/NN-step.png`). Until then, the textual tour is the source of truth.
+On first load the dev user is provisioned and seeded (5 accounts, 46 categories, 6 goals). Add activity via `/transactions/new` or the CSV import (`/transactions/import`) to populate the charts.
+
+The screenshots above are captured from this local run with a committed Playwright script:
+
+```bash
+npx playwright install chromium      # one-time
+node scripts/capture-screenshots.mjs # writes docs/screenshots/*.png (1440px, light + dark)
+```
 
 The full feature walkthrough — every page, every form, every server action — is in [§ 13](#13-page-by-page-reference).
 
@@ -948,12 +997,16 @@ Each item is a separate commit; `typecheck` + `lint` + `test` (43/43) + producti
 - **Empty-state illustrations** across every list page.
 - **Review hardening:** server-side category-kind validation in `bulkUpdateCategory`; stale-selection pruning; trimmed client RSC payloads (no `userId`/timestamps shipped to the browser); an accessible name on the auto-sync icon.
 
+### ✅ Done — local dev mode + screenshots
+
+- **Zero-cloud `LOCAL_DEV` mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)): a `NEXT_PUBLIC_LOCAL_DEV` flag swaps the DB layer to a local Postgres (`pg`) and replaces Clerk with a fixed dev user. Gated so production stays on Neon + Clerk, verified by the placeholder-creds production build.
+- **Screenshots** captured from a live local run (light + dark) via a committed `scripts/capture-screenshots.mjs`, embedded in [§ 2.1](#21-screenshots).
+
 ### 🚧 What's left
 
 | Area | State | Blocked on |
 | --- | --- | --- |
-| **Playwright e2e suite (P1)** | `playwright.config.ts` present; **no specs written**, and `@clerk/testing` is **not** installed despite older docs claiming it. | A Clerk **dev instance** (test publishable + secret keys) and a **database** (Neon URL or local Postgres). Then: add `@clerk/testing`, write the `auth` / `transactions` / `dashboard` / `settings` / `goals` / `import` specs, and get them green. |
-| **Live screenshots** | None captured. | Same as e2e — a running app with real data. Capture procedure: [§ 2.3](#23-capturing-screenshots). |
+| **Playwright e2e suite (P1)** | `playwright.config.ts` present; **no specs written**, and `@clerk/testing` is **not** installed. | The DB + non-auth flows can now run under `LOCAL_DEV` (no cloud). The `auth` spec (sign-in/out, redirects) still needs a real **Clerk dev instance** + `@clerk/testing`. Then write the `transactions` / `dashboard` / `settings` / `goals` / `import` specs and get them green. |
 | **Phase 11.5 — live aggregation** | Schema, crypto, and the `/connections` shell are in; SDK glue is not. Full work list: [§ 16](#16-phase-115--live-aggregation-plaid--snaptrade). | Plaid + SnapTrade **API keys**, plus `ENCRYPTION_KEY` and `CRON_SECRET`. On hold by request — needs live credentials to be testable. |
 | **Deploy to Vercel (Phase 14)** | Not started. Steps: [§ 15](#15-deploying-to-vercel). | Vercel auth + a production Neon DB + env vars. |
 | **P3 nice-to-haves** | Not started. | Nothing external — see below. |
