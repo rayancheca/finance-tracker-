@@ -221,7 +221,7 @@ export function TransactionsTable({ rows, categories }: TransactionsTableProps) 
       </Table>
 
       {validSelected.size > 0 && (
-        <div className="pointer-events-none sticky bottom-4 z-10 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 flex justify-center px-4 md:bottom-6">
           <div className="pointer-events-auto flex items-center gap-1 rounded-full border bg-card/90 p-1.5 pl-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/75">
             <span className="text-sm font-medium">{validSelected.size} selected</span>
             <Separator orientation="vertical" className="mx-1 h-5" />
