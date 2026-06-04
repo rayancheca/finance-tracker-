@@ -118,6 +118,33 @@ export async function bulkDeleteTransactions(ids: string[]): Promise<Result> {
 
 export async function bulkUpdateCategory(ids: string[], categoryId: string): Promise<Result> {
   const userId = await requireUser();
+  if (ids.length === 0) return { ok: true, data: 0 };
+
+  const [cat] = await db
+    .select({ kind: categories.kind })
+    .from(categories)
+    .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
+    .limit(1);
+  if (!cat) return { ok: false, error: 'Category not found' };
+
+  // Reject the whole batch (no partial writes) if any selected row's type
+  // conflicts with the category kind — mirrors assertCategoryMatchesType.
+  const affected = await db
+    .select({ type: transactions.type })
+    .from(transactions)
+    .where(and(eq(transactions.userId, userId), inArray(transactions.id, ids)));
+  for (const r of affected) {
+    if (r.type === 'transfer') {
+      return { ok: false, error: 'Transfers cannot be categorized' };
+    }
+    if (r.type === 'income' && cat.kind !== 'income') {
+      return { ok: false, error: 'Income transactions need an income category' };
+    }
+    if (r.type === 'expense' && cat.kind === 'income') {
+      return { ok: false, error: 'Expense transactions cannot use an income category' };
+    }
+  }
+
   await db
     .update(transactions)
     .set({ categoryId, isManuallyEdited: true, updatedAt: new Date() })

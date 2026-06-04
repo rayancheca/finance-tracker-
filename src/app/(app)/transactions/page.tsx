@@ -1,21 +1,12 @@
 import Link from 'next/link';
-import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TransactionsTable } from '@/components/transactions/TransactionsTable';
 import { listTransactions, listAccounts, listCategories } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
-import { formatUSD } from '@/lib/currency';
-import { Plus, Upload, Zap } from 'lucide-react';
+import { Plus, Receipt, Upload } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +40,23 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     listAccounts(userId),
     listCategories(userId),
   ]);
+
+  const categoryOptions = categories
+    .filter((c) => !c.isArchived)
+    .map((c) => ({ id: c.id, name: c.name, group: c.group, kind: c.kind }));
+
+  const tableRows = rows.map((r) => ({
+    id: r.id,
+    date: r.date,
+    amount: r.amount,
+    type: r.type,
+    merchant: r.merchant,
+    description: r.description,
+    accountName: r.accountName,
+    categoryId: r.categoryId,
+    categoryName: r.categoryName,
+    externalTransactionId: r.externalTransactionId,
+  }));
 
   return (
     <div className="space-y-6">
@@ -111,72 +119,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <Card>
         <CardContent className="p-0">
           {rows.length === 0 ? (
-            <div className="p-12 text-center">
-              <h3 className="font-medium">No transactions match</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Adjust filters or{' '}
-                <Link href="/transactions/new" className="text-primary underline">
-                  add a transaction
-                </Link>
-                .
-              </p>
-            </div>
+            <EmptyState
+              icon={Receipt}
+              heading="No transactions match"
+              subline="Adjust your filters, or add a transaction to get started."
+              action={{ label: 'Add transaction', href: '/transactions/new' }}
+            />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="tabular text-sm">
-                      {format(new Date(r.date), 'MMM d')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {r.externalTransactionId && (
-                          <Zap className="h-3 w-3 text-accent" />
-                        )}
-                        <div>
-                          <div className="text-sm">{r.description}</div>
-                          {r.merchant && (
-                            <div className="text-xs text-muted-foreground">{r.merchant}</div>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{r.categoryName ?? r.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{r.accountName}</TableCell>
-                    <TableCell
-                      className={
-                        'tabular text-right text-sm font-medium ' +
-                        (r.type === 'income' ? 'text-income' : 'text-expense')
-                      }
-                    >
-                      {r.type === 'income' ? '+' : '−'}
-                      {formatUSD(parseFloat(r.amount))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/transactions/${r.id}/edit`}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Edit
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <TransactionsTable rows={tableRows} categories={categoryOptions} />
           )}
         </CardContent>
       </Card>

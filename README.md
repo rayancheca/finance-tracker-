@@ -4,7 +4,7 @@ A single-user personal finance dashboard — manual transaction tracking, budget
 
 Lives at (eventually) `finance.rayancheca.com`. For now: a Vercel preview URL once deployed.
 
-> **Status:** v1 application code complete on branch `claude/finance-app-build-brXBq`. Build, typecheck, lint, and 43/43 unit tests pass locally. Awaiting external-service provisioning (Clerk, Neon) and Vercel deploy. See [§ Status & what's left](#-status--whats-left) for exact delivery state.
+> **Status:** Application code complete and on `main`. Covers v1 (Phases 0–13) plus a **P2 UX-polish** pass (drag-to-reorder categories, inline + bulk transaction editing, account detail pages, empty states), **account/card CRUD**, **holdings with live market prices**, and a zero-cloud **local dev mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)) — which is how the screenshots below were captured against a local Postgres. `typecheck`, `lint`, the **43/43** unit tests, and a production `build` all pass locally. Still outstanding: the Playwright **e2e suite**, **Phase 11.5** live bank/brokerage aggregation (needs Plaid/SnapTrade keys), and the **Vercel deploy**. See [§ 19](#19-status--whats-left) for the full roadmap.
 
 ---
 
@@ -28,7 +28,7 @@ Lives at (eventually) `finance.rayancheca.com`. For now: a Vercel preview URL on
 - [16. Phase 11.5 — Live aggregation (Plaid + SnapTrade)](#16-phase-115--live-aggregation-plaid--snaptrade)
 - [17. Continuing development on a different machine](#17-continuing-development-on-a-different-machine)
 - [18. Troubleshooting](#18-troubleshooting)
-- [19. Status & what's left](#-status--whats-left)
+- [19. Status & what's left](#19-status--whats-left)
 - [20. Disclaimers](#20-disclaimers)
 
 ---
@@ -38,24 +38,67 @@ Lives at (eventually) `finance.rayancheca.com`. For now: a Vercel preview URL on
 A single user (Rayan) signs in once and gets:
 
 - **A dashboard** with eight KPI tiles (net income, expenses, cash flow, savings rate, net worth, top category, top goal, NYC lease liability) plus three charts (Income vs Expenses bar, Expense Breakdown donut, 12-month Net Cash Flow line).
-- **Full transaction CRUD** — add, edit, filter, search, bulk-update, bulk-delete; CSV import with column-mapping and duplicate detection; CSV + XLSX export.
-- **Category management** with monthly budgets and groups.
-- **Account management** — checking, savings, credit card, brokerage, cash, retirement.
+- **Full transaction CRUD** — add, edit, filter, search; **re-assign a category inline** from the table via a searchable combobox; **bulk-select** rows and act on them from a sticky toolbar (delete, set category, mark cleared); CSV import with column-mapping and duplicate detection; CSV + XLSX export.
+- **Category management** with monthly budgets, groups, and **drag-to-reorder within a group**.
+- **Account management** — **add / edit / delete** checking, savings, credit-card, brokerage, cash, and retirement accounts with a current balance (use a negative for money owed on a card). Each has a **detail page** (`/accounts/[id]`) with a balance-over-time chart and that account's recent activity (including inbound transfers).
 - **Savings goals** with progress bars, contributions log, and confetti when a goal completes.
-- **Net worth snapshots** with a trend chart and a Holdings tab for brokerage positions (populated by SnapTrade when Phase 11.5 is enabled).
+- **Net worth snapshots** with a trend chart and a **Holdings tab** where you add positions or **import a CSV** (ticker + shares); current price, market value, and % of portfolio come from **live Yahoo Finance quotes** (no brokerage API needed) and refresh on demand.
 - **Recurring bills/subscriptions** with auto-post on next-due-date and a monthly-equivalent summary.
 - **NYC lease overhang tracker** showing months remaining, effective monthly share (with sublet offset), and what releasing would save.
 - **Tax calculator** using 2025 federal brackets + FICA + simplified state rates, configurable, with bracket breakdown.
 - **Monthly pivot report** (category × month for any year) + an **annual summary** report with comparison KPIs.
 - **Settings** controlling salary, tax assumptions, lease state, housing scenario, and app preferences (theme, date format).
 
-It is intentionally **not** Mint or YNAB — no Plaid syncing in v1, no multi-user/household, no mobile-native app, no investment-portfolio analytics beyond holding totals. See § 16 for the live-aggregation extension (Phase 11.5).
+It is intentionally **not** Mint or YNAB — accounts and transactions are entered manually or via CSV (no automatic bank syncing in v1), it's single-user, and there's no mobile-native app. Holdings are priced from live market quotes but it's not a full portfolio-analytics tool. See § 16 for the optional live bank/brokerage aggregation extension (Phase 11.5).
 
 ---
 
 ## 2. Screenshots & feature tour
 
-> Screenshots haven't been captured yet (no browser in the build environment). Once you run locally, the route map below shows the layout.
+> Captured from a live local run with seeded demo data — the zero-cloud `LOCAL_DEV` path (local Postgres, no Neon/Clerk accounts) documented in [§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots). Re-generate any time with `node scripts/capture-screenshots.mjs`.
+
+### 2.1. Screenshots
+
+**Dashboard** — eight KPI tiles, three charts (Income vs Expenses, Expense Breakdown, 12-mo Net Cash Flow), recent activity, and goal progress, in light and dark:
+
+![Dashboard, light mode](docs/screenshots/01-dashboard-light.png)
+![Dashboard, dark mode](docs/screenshots/01-dashboard-dark.png)
+
+**Transactions — bulk-select toolbar (P2).** Selecting rows reveals a floating toolbar: *Mark cleared*, *Set category…*, *Delete*.
+
+![Transactions with the bulk-actions toolbar](docs/screenshots/02-transactions-bulk-toolbar.png)
+
+**Transactions — inline category edit (P2).** Clicking a category badge opens a searchable combobox, scoped to the row's transaction type.
+
+![Inline category combobox open](docs/screenshots/02b-transactions-inline-category.png)
+
+**Categories — drag-to-reorder (P2).** Each row has a grip handle; reordering within a group persists.
+
+![Categories with drag handles](docs/screenshots/03-categories-reorder.png)
+
+**Account detail (P2)** — header, balance-over-time area chart, and direction-aware recent activity:
+
+![Account detail page](docs/screenshots/05-account-detail-light.png)
+
+**Net worth trend** and the **monthly category × month report**:
+
+![Net worth trend](docs/screenshots/07-net-worth-trend.png)
+![Monthly report pivot](docs/screenshots/08-reports-monthly.png)
+
+**Tax calculator** (2025 brackets + FICA + state) and **Goals** (progress bars, one completed):
+
+![Tax calculator](docs/screenshots/09-tax-calculator.png)
+![Goals grid](docs/screenshots/06-goals.png)
+
+**Edit your own data** — add / edit real accounts and cards (the app's first modal):
+
+![Add account dialog](docs/screenshots/10-add-account-dialog.png)
+
+**Investments with live prices** — add or CSV-import holdings; price, market value, and % of portfolio come from live Yahoo Finance quotes:
+
+![Holdings with live market prices](docs/screenshots/11-holdings-live-prices.png)
+
+### 2.2. App shell
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -77,6 +120,52 @@ It is intentionally **not** Mint or YNAB — no Plaid syncing in v1, no multi-us
 
 Mobile: sidebar collapses → bottom nav (Home / Tx / + / Goals / Settings).
 The center "+" button is a FAB that opens the new-transaction form.
+```
+
+### 2.3. Guided golden-path tour
+
+The walkthrough a first-time user follows, start to finish. Each step is a distinct, screenshot-worthy state. (Steps 1–2 describe the production Clerk flow; in `LOCAL_DEV` a fixed dev user is provisioned automatically.)
+
+1. **Sign in.** Hitting any route while signed out redirects to `/sign-in` (Clerk). Sign-up is allowlist-restricted to the owner's email, so the app is effectively single-user.
+2. **First-run provisioning.** On the first authenticated request, the user is mirrored into the `users` table and `seedNewUser()` inserts 5 accounts, 46 categories, 6 goals, and 24 settings — so the dashboard is populated immediately, never empty.
+3. **Dashboard (`/`).** Eight KPI tiles (net income, expenses, cash flow, savings rate, net worth + 30-day delta, top category, top goal, NYC lease) above three charts (Income vs Expenses 6-mo bar, Expense Breakdown donut, 12-mo Net Cash Flow line), then recent transactions and goal progress. Toggle light/dark from the header.
+4. **Add a transaction (`/transactions/new`).** Income / Expense / Transfer toggle; per-type required fields; cleared switch. Saving returns to the list and the dashboard KPIs reflect it.
+5. **Transactions list (`/transactions`).** Filter by search/date/type/account (URL-synced). **New in P2:** click a row's category badge to reassign it inline via a searchable combobox (scoped to the row's type); tick the checkboxes to reveal a floating toolbar — *Mark cleared*, *Set category…*, *Delete* — acting on the whole selection.
+6. **Categories (`/categories`).** Budgets grouped by bucket. **New in P2:** grab the ⠿ handle to drag-reorder categories within a group (keyboard-operable); the new order persists.
+7. **Account detail (`/accounts/[id]`). New in P2:** click any account card to drill in — header with the live balance, a balance-over-time area chart, and direction-aware recent activity (inbound transfers show as `+`).
+8. **Goals (`/goals/[id]`).** Contribute to a goal; crossing the target flips it to `completed` and fires confetti.
+9. **CSV import (`/transactions/import`).** Upload → map columns (auto-detected) → 10-row preview → confirm; duplicates are skipped.
+10. **Reports & export (`/reports/*`).** Monthly category × month pivot and an annual summary, with year-scoped CSV/XLSX download.
+11. **Empty states. New in P2:** every list surface (transactions, categories, accounts, goals, net-worth, recurring, connections) renders a designed empty state (icon + heading + subline + CTA) instead of bare text.
+
+### 2.4. Running locally (zero cloud) + capturing screenshots
+
+To run with **no Neon and no Clerk account**, set `NEXT_PUBLIC_LOCAL_DEV=1`. It points the DB layer at a local Postgres (via `pg`) and replaces Clerk with a single fixed dev user. Production is unaffected — with the flag unset it uses Neon + Clerk exactly as before.
+
+```bash
+# 1. Local Postgres (macOS / Homebrew)
+brew install postgresql@16 && brew services start postgresql@16
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"   # postgresql@16 is keg-only
+createdb finance_tracker
+
+# 2. Point the app at it, in local mode
+cat > .env.local <<EOF
+DATABASE_URL="postgres://$(whoami)@localhost:5432/finance_tracker"
+NEXT_PUBLIC_LOCAL_DEV="1"
+EOF
+
+# 3. Create the tables, then run
+DATABASE_URL="postgres://$(whoami)@localhost:5432/finance_tracker" npm run db:push   # answer "Yes"
+npm run dev    # http://localhost:3000 — no sign-in; a dev user is auto-seeded
+```
+
+On first load the dev user is provisioned and seeded (5 accounts, 46 categories, 6 goals). Add activity via `/transactions/new` or the CSV import (`/transactions/import`) to populate the charts.
+
+The screenshots above are captured from this local run with a committed Playwright script:
+
+```bash
+npx playwright install chromium      # one-time
+node scripts/capture-screenshots.mjs # writes docs/screenshots/*.png (1440px, light + dark)
 ```
 
 The full feature walkthrough — every page, every form, every server action — is in [§ 13](#13-page-by-page-reference).
@@ -260,10 +349,9 @@ This walks the entire path from "fresh machine" to "running app at localhost:300
 ```bash
 git clone https://github.com/rayancheca/finance-tracker-.git
 cd finance-tracker-
-git checkout claude/finance-app-build-brXBq
 ```
 
-> The v1 build lives on the `claude/finance-app-build-brXBq` branch. Once you merge PR #1, switch back to `main`.
+> `main` has everything described in this README. To run it with **no cloud accounts**, jump to [§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots).
 
 ### 6.2. Install dependencies
 
@@ -578,6 +666,8 @@ All inputs use Zod schemas defined in `src/lib/validators.ts`. The schemas are s
 
 - Filter bar (search, date range, type, account) syncs to URL via GET params.
 - Table with pagination (50 rows/page).
+- **Inline category edit (P2):** click a row's category badge to open a searchable Popover + `cmdk` combobox and reassign it via `bulkUpdateCategory([id], …)` without leaving the page. Options are scoped to the row's transaction type; transfer rows show a static, non-editable badge.
+- **Bulk actions (P2):** a leading checkbox column with a tri-state select-all header. Selecting ≥1 row reveals a floating sticky toolbar — **Mark cleared** (`bulkSetCleared`), **Set category…** (`bulkUpdateCategory`, searchable picker), **Delete** (`bulkDeleteTransactions`, confirm-guarded). The selection is pruned against on-screen rows so an action can never hit a row scrolled/filtered out of view.
 - "Import" → CSV wizard. "New" → `/transactions/new`.
 - Edit → `/transactions/[id]/edit`.
 
@@ -598,14 +688,23 @@ All inputs use Zod schemas defined in `src/lib/validators.ts`. The schemas are s
 
 ### `/categories`
 
-- Grouped read-only view with monthly budgets per category.
-- Income / Expense / Savings kind badges.
+- Grouped view with monthly budgets per category and Income / Expense / Savings kind badges.
+- **Drag-to-reorder (P2):** grab the ⠿ handle to reorder categories within a group (`@dnd-kit`, keyboard-operable). Drops post the full ordered id list to `reorderCategories` so `sortOrder` stays globally monotonic; the update is optimistic and rolls back with a toast on failure.
 
 ### `/accounts`
 
 - Card grid with computed live balance: opening + Σincome − Σexpense − Σtransfers-out + Σtransfers-in.
 - Auto-synced accounts show a ⚡ icon (Phase 11.5).
 - If `lastReportedBalance` exists and is <48h old, that's preferred over the computed balance.
+- **Each card links to its detail page (P2):** `/accounts/[id]`.
+- **Add / edit / delete accounts:** "Add account" opens a modal form (name, type, current balance, institution, last-4, color); the detail page has Edit / Archive / Delete. Set a negative balance for money owed on a card.
+
+### `/accounts/[id]` — Account detail (P2)
+
+- Header: account name, type badge, institution/last-4, and the live balance.
+- **Balance-over-time** area chart, folding a running balance from this account's transactions with the same signing as the list-page balance (income +, expense −, transfers by direction).
+- **Recent activity** table that includes inbound transfers (where this account is the destination) with direction-aware signing, so the table and the chart agree on what counts as activity.
+- Scoped by `userId`; an id that isn't the signed-in user's 404s via `notFound()`.
 
 ### `/goals` & `/goals/[id]`
 
@@ -616,7 +715,8 @@ All inputs use Zod schemas defined in `src/lib/validators.ts`. The schemas are s
 ### `/net-worth`
 
 - Header KPI: sum of latest snapshot per account (or computed if no snapshots).
-- Three tabs: **Trend** (area chart), **Snapshots** (history table), **Holdings** (Phase 11.5 brokerage positions).
+- Three tabs: **Trend** (area chart), **Snapshots** (history table), and **Holdings**.
+- **Holdings** is a manager: add a position (ticker + shares), import a CSV (`symbol`, `quantity`, optional cost basis), refresh, or delete. You supply the quantities; **current price, market value, and % of portfolio come from live Yahoo Finance quotes** (`yahoo-finance2`) and update on **Refresh prices**. No brokerage API required.
 
 ### `/recurring`
 
@@ -684,14 +784,15 @@ npm run test:watch     # watch mode
 
 ### E2E tests (Playwright)
 
-Configured but not written yet. To enable:
+`playwright.config.ts` is present (it boots `npm run dev` and targets `http://localhost:3000`), but **no specs are written yet** and **`@clerk/testing` is not installed** — it will be added when the suite is built. Getting them green requires a running app with real data (a Clerk dev instance + a database), because every route is auth-protected. Once those exist:
 
 ```bash
-npx playwright install   # one-time browser install
+npm install @clerk/testing   # not yet a dependency
+npx playwright install        # one-time browser install
 npm run test:e2e
 ```
 
-Writing them requires `@clerk/testing` test-mode credentials. See `playwright.config.ts`.
+Planned specs: `auth` (sign in / out, protected-route redirects), `transactions` (CRUD + filter + inline & bulk edit), `dashboard` (8 KPIs + 3 charts render, no console errors), `settings` → tax-calculator reflection, `goals` (contribute + complete + confetti), `import` (CSV map → confirm → row count). Tracked in [§ 19](#19-status--whats-left).
 
 ---
 
@@ -806,7 +907,7 @@ On the new machine:
 ```bash
 git clone https://github.com/rayancheca/finance-tracker-.git
 cd finance-tracker-
-git checkout claude/finance-app-build-brXBq    # or main, once PR #1 is merged
+# `main` has v1; `git checkout p2/ux-polish` for the P2 work (PR #2) until it's merged
 npm install
 cp .env.example .env.local
 # Edit .env.local with your existing Neon + Clerk keys
@@ -882,30 +983,60 @@ The tax calculator uses 2025 brackets hard-coded in `src/lib/tax.ts`. If a futur
 
 ## 19. Status & what's left
 
-### ✅ Done (Phases 0–13 in code form)
+### ✅ Done — v1 (Phases 0–13)
 
-- Bootstrap, all dependencies pinned, configs (TS strict, ESLint, Prettier, Tailwind, Drizzle, Vitest, Playwright)
-- Full Drizzle schema (12 tables, 9 enums) including Phase 11.5 columns
+- Bootstrap, pinned deps, configs (TS strict, ESLint, Prettier, Tailwind, Drizzle, Vitest, Playwright)
+- Full Drizzle schema (12 tables, 9 enums), incl. the Phase 11.5 columns
 - Idempotent seed (5 accounts, 46 categories, 6 goals, 24 settings)
-- Clerk middleware + auth helpers + provisioning hook
-- Sidebar + Header + MobileNav layout
+- Clerk middleware + auth helpers + first-run provisioning
+- Sidebar + Header + MobileNav layout (light/dark)
 - All app pages (Dashboard, Transactions list/new/edit/import, Categories, Accounts, Goals + detail, Net Worth + Holdings, Recurring, Lease, Tax Calculator, Reports monthly + annual, Settings, Connections shell)
 - All server actions (CRUD + bulk + import + contribute + bulkSnapshot + postRecurring + updateSettings)
 - CSV + XLSX export endpoints
 - AES-256-GCM token encryption helpers
 - 43 unit tests, all passing
-- README + BUILD_LOG
 
-### 🚧 Deferred / partial
+### ✅ Done — P2 UX polish (PR #2)
 
-- **Phase 11.5 SDK wiring** (Plaid + SnapTrade): schema and crypto in; integration code not. Needs API keys.
-- **Playwright e2e tests:** config installed, no `.spec.ts` files yet.
-- **UX polish:**
-  - Drag-to-reorder categories (server action exists; UI handler doesn't).
-  - Inline category-edit on transactions table.
-  - Bulk-select checkboxes in transactions list.
-- **Phase 14 (deploy):** awaits your Vercel setup.
-- **Visual regression screenshots:** none captured (no browser in build env).
+Each item is a separate commit; `typecheck` + `lint` + `test` (43/43) + production `build` all clean. **No new runtime dependencies** — the new code adds shadcn-style `checkbox` / `popover` / `command` / `empty-state` primitives over libraries (`@dnd-kit/*`, `@radix-ui/react-checkbox`, `@radix-ui/react-popover`, `cmdk`) that were already declared.
+
+- **Drag-to-reorder categories** on `/categories` (`@dnd-kit`, optimistic + rollback, keyboard-operable).
+- **Inline category edit** on the transactions table (Popover + `cmdk` combobox, scoped to the row's type).
+- **Bulk-select + sticky toolbar** on `/transactions` (delete / set category / mark cleared).
+- **Account detail page** `/accounts/[id]` (balance-over-time chart + direction-aware recent activity).
+- **Empty-state illustrations** across every list page.
+- **Review hardening:** server-side category-kind validation in `bulkUpdateCategory`; stale-selection pruning; trimmed client RSC payloads (no `userId`/timestamps shipped to the browser); an accessible name on the auto-sync icon.
+
+### ✅ Done — local dev mode + screenshots
+
+- **Zero-cloud `LOCAL_DEV` mode** ([§ 2.4](#24-running-locally-zero-cloud--capturing-screenshots)): a `NEXT_PUBLIC_LOCAL_DEV` flag swaps the DB layer to a local Postgres (`pg`) and replaces Clerk with a fixed dev user. Gated so production stays on Neon + Clerk, verified by the placeholder-creds production build.
+- **Screenshots** captured from a live local run (light + dark) via a committed `scripts/capture-screenshots.mjs`, embedded in [§ 2.1](#21-screenshots).
+
+### ✅ Done — editable data + live holdings
+
+- **Account / card CRUD from the UI** (add on `/accounts`, edit / archive / delete on the detail page) — the seeded demo accounts can be replaced with real ones, balances and all.
+- **Holdings + live market data:** add positions or import a CSV (ticker + shares); current price, market value, and % of portfolio are computed from **live Yahoo Finance quotes** (`yahoo-finance2`) and refresh on demand. Holdings upsert on (account, symbol). Verified end-to-end against real quotes in local dev.
+
+### 🚧 What's left
+
+| Area | State | Blocked on |
+| --- | --- | --- |
+| **Playwright e2e suite (P1)** | `playwright.config.ts` present; **no specs written**, and `@clerk/testing` is **not** installed. | The DB + non-auth flows can now run under `LOCAL_DEV` (no cloud). The `auth` spec (sign-in/out, redirects) still needs a real **Clerk dev instance** + `@clerk/testing`. Then write the `transactions` / `dashboard` / `settings` / `goals` / `import` specs and get them green. |
+| **Phase 11.5 — live aggregation** | Schema, crypto, and the `/connections` shell are in; SDK glue is not. Full work list: [§ 16](#16-phase-115--live-aggregation-plaid--snaptrade). | Plaid + SnapTrade **API keys**, plus `ENCRYPTION_KEY` and `CRON_SECRET`. On hold by request — needs live credentials to be testable. |
+| **Deploy to Vercel (Phase 14)** | Not started. Steps: [§ 15](#15-deploying-to-vercel). | Vercel auth + a production Neon DB + env vars. |
+| **P3 nice-to-haves** | Not started. | Nothing external — see below. |
+
+#### P3 — nice-to-haves (no external dependencies)
+
+- Goal contribution can optionally create a matching savings transaction.
+- "Post Due Today" action on `/recurring` for `autoPost` entries.
+- Lease "what-if release on date X" interactive picker on `/lease`.
+- Tax calculator: bracket-bar visualization; a "save settings" diff preview.
+- Reports: heatmap conditional formatting on the monthly pivot; a year-over-year comparison row on the annual report.
+
+#### Known, intentionally deferred
+
+- The `/accounts/[id]` balance chart's final point can diverge from the headline balance — but **only once Phase 11.5 sync populates `lastReportedBalance` / `lastBalanceSync`** (nothing writes those today, so it's dormant). It rides along with the Phase 11.5 work rather than being fixed speculatively.
 
 ### Acceptance checklist (spec § 15)
 
@@ -919,4 +1050,5 @@ See `BUILD_LOG.md` for the full checklist with current state.
 - **State income tax** uses simplified flat rates (FL/TX/WA/NV = 0%; NY/NJ/CA/MA approximations). Brackets, credits, and deductions are not modeled.
 - **Auto-sync (when enabled)** can lag, miss recurring transactions, or temporarily disconnect when banks update security. Treat synced data as a starting point — review categorizations. Your manual edits always win over future sync updates.
 - **Robinhood activity** (buys/sells/dividends) intentionally does NOT flow into the main transactions table. If/when Phase 11.5 is enabled, it lives on the brokerage account's Activity tab.
+- **Market data** for holdings comes from public Yahoo Finance endpoints via `yahoo-finance2`. It is delayed/unofficial, has no SLA, and is for personal tracking only — not for trading decisions. Prices update only when you hit **Refresh prices**.
 - **Single user.** The schema supports adding more users, but the UI does not surface anything multi-user. Don't share your sign-in.

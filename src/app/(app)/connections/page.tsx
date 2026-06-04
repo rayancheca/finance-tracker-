@@ -1,6 +1,8 @@
+import { Plug } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { db } from '@/db';
 import { aggregatorConnections } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -36,14 +38,19 @@ export default async function ConnectionsPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {conns.length === 0 ? (
-          <Card>
-            <CardContent className="space-y-2 p-8 text-center">
-              <p className="font-medium">No connections yet</p>
-              <p className="text-sm text-muted-foreground">
-                Plaid (banks/cards/brokerages) and SnapTrade (Robinhood) integration is wired but
-                requires API keys. Set <code>PLAID_*</code> and <code>SNAPTRADE_*</code> env vars
-                and enable Phase 11.5 to connect.
-              </p>
+          <Card className="md:col-span-2">
+            <CardContent className="p-0">
+              <EmptyState
+                icon={Plug}
+                heading="No connections yet"
+                subline={
+                  <>
+                    Plaid (banks/cards/brokerages) and SnapTrade (Robinhood) integration is wired
+                    but requires API keys. Set <code>PLAID_*</code> and <code>SNAPTRADE_*</code> env
+                    vars and enable Phase 11.5 to connect.
+                  </>
+                }
+              />
             </CardContent>
           </Card>
         ) : (

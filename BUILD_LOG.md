@@ -2,6 +2,31 @@
 
 Built per the `BUILD_GUIDE` spec on branch `claude/finance-app-build-brXBq`.
 
+## Session 2 (2026-05-30) — P2 UX polish + review hardening
+
+Branch `p2/ux-polish` → PR #2. All five P2 items from the to-do list are done. Each was committed separately and verified with `typecheck && lint && test` (43/43) plus a production build (21 routes) before push. No new runtime dependencies were added — every library used (`@dnd-kit/*`, `@radix-ui/react-checkbox`, `@radix-ui/react-popover`, `cmdk`) was already in `package.json`; the new code adds shadcn-style primitives (`checkbox`, `popover`, `command`, `empty-state`) over them.
+
+Delivered:
+
+- **Drag-to-reorder categories** (`/categories`): new client `CategoryBoard` wires `@dnd-kit/sortable` with a grip handle and keyboard sensor; drops POST the full ordered id list to the existing `reorderCategories` so `sortOrder` stays globally monotonic, with optimistic update + rollback. The runtime drag transform is applied via the `style` prop (no `@dnd-kit/utilities`, which isn't a declared dep).
+- **Inline category edit** on the transactions table: clicking a category badge opens a searchable Popover + cmdk Command combobox that calls `bulkUpdateCategory([id], …)` and stays on the page. Options are scoped to the row's transaction type; transfer rows show a static badge (transfers aren't categorized).
+- **Bulk-select + sticky toolbar** on `/transactions`: checkbox column with a tri-state select-all header and a floating pill (Mark cleared / Set category / Delete) wired to `bulkSetCleared` / `bulkUpdateCategory` / `bulkDeleteTransactions`. The table was extracted into a `TransactionsTable` client component so the page stays a server component.
+- **Account detail page** `/accounts/[id]`: account cards now link through to a header + balance-over-time area chart (`AccountBalanceChart`, mirrors `NetWorthChart`) + recent activity. Added `getAccountBalanceSeries` (running balance folded with the same signing as `getAccountBalances`) and `getAccountActivity` (includes inbound transfers with direction-aware signing so the table agrees with the chart).
+- **Empty-state illustrations**: reusable `EmptyState` (lucide icon + heading + subline + optional CTA) applied to transactions, categories, accounts, goals, net-worth (snapshots + holdings), recurring, and connections. The dashboard's compact inline messages and the in-table `reports/monthly` message were intentionally left as-is.
+
+Review: after implementation, an adversarial multi-agent review ran over the diff (correctness / conventions / a11y). Confirmed findings were fixed in commit `173ffd8`:
+
+- **Category-kind validation** added to `bulkUpdateCategory` — both new UIs route through it, and it previously accepted any category for any transaction type (could put an income category on an expense and corrupt kind-keyed reports). It now rejects the whole batch on conflict.
+- **Stale-selection prune**: the transactions selection is now derived against the on-screen rows, so an inline edit that drops a row from a filtered view can't leave a phantom selection that skews the count or lets a bulk delete hit an off-screen row.
+- **RSC payload hygiene**: category and transaction rows are projected to the fields the client needs before crossing the boundary (no `userId`/timestamps shipped to the browser).
+- **A11y**: the auto-synced ⚡ icon got an accessible name, matching the accounts pages.
+
+Known/deferred from this session:
+
+- The account balance chart's final point can diverge from the headline balance, but **only once Phase 11.5 sync populates `lastReportedBalance`/`lastBalanceSync`** — nothing writes those columns today, so it's dormant. Left for the Phase 11.5 work (on hold pending API keys).
+- **P1 (Playwright e2e)** is not done: it needs a Clerk dev instance + a database connection string to run green, and `@clerk/testing` was found NOT to be installed despite the docs claiming it (it'll be added when P1 is tackled).
+- **Live screenshots** (light/dark) were not captured — same blocker (no running app with real data without Clerk + DB creds).
+
 ## What was delivered in this session
 
 ### Phase 0 — Bootstrap

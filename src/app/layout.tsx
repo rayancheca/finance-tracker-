@@ -19,17 +19,21 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+const LOCAL_DEV = process.env.NEXT_PUBLIC_LOCAL_DEV === '1';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body className="min-h-screen bg-background font-sans text-foreground">
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            {children}
-            <Toaster richColors closeButton position="bottom-right" />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+  const tree = (
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans text-foreground">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+          <Toaster richColors closeButton position="bottom-right" />
+        </ThemeProvider>
+      </body>
+    </html>
   );
+
+  // LOCAL_DEV runs without Clerk, so the provider (which requires a publishable
+  // key) is skipped.
+  return LOCAL_DEV ? tree : <ClerkProvider>{tree}</ClerkProvider>;
 }

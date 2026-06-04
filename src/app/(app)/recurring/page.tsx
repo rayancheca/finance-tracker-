@@ -1,10 +1,12 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/ui/empty-state';
 import { listRecurring } from '@/db/queries';
 import { requireUser } from '@/lib/auth';
 import { formatUSD } from '@/lib/currency';
 import { format } from 'date-fns';
+import { Repeat } from 'lucide-react';
 
 const FREQ_TO_MONTHLY: Record<string, number> = {
   daily: 30,
@@ -49,7 +51,11 @@ export default async function RecurringPage() {
       <Card>
         <CardContent className="p-0">
           {items.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No recurring entries yet.</p>
+            <EmptyState
+              icon={Repeat}
+              heading="No recurring entries yet"
+              subline="Track subscriptions and bills that repeat on a schedule."
+            />
           ) : (
             <Table>
               <TableHeader>

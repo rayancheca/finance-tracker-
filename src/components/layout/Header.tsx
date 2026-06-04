@@ -5,6 +5,8 @@ import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const LOCAL_DEV = process.env.NEXT_PUBLIC_LOCAL_DEV === '1';
+
 export function Header({ title }: { title?: string }) {
   const { theme, setTheme } = useTheme();
   return (
@@ -22,7 +24,16 @@ export function Header({ title }: { title?: string }) {
           <Sun className="h-4 w-4 dark:hidden" />
           <Moon className="hidden h-4 w-4 dark:block" />
         </Button>
-        <UserButton afterSignOutUrl="/sign-in" />
+        {LOCAL_DEV ? (
+          <span
+            className="flex h-7 items-center rounded-full border border-border bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+            title="Local dev mode — Clerk auth bypassed"
+          >
+            Local dev
+          </span>
+        ) : (
+          <UserButton afterSignOutUrl="/sign-in" />
+        )}
       </div>
     </header>
   );
